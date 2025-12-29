@@ -1,4 +1,4 @@
-import { GraphVisualizer } from "/src/visualizer/graph.js"
+import { GraphVisualizer } from "../../visualizer/graph.js"
 import { IPoseFrameMaker } from "./pose.interface.js"
 
 

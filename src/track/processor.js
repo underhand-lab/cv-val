@@ -1,4 +1,4 @@
-import { FFMPEGVideoConverter } from '/src/video-to-img-list/ffmpeg.js'
+import { FFMPEGVideoConverter } from '../video-to-img-list/ffmpeg.js'
 
 export class TrackProcessor {
 
