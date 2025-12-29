@@ -1,6 +1,6 @@
-# Ana-Vis
+# CV-Val
 
-Ana-Vis는 Analysis by computer Vision의 약자로 컴퓨터 비전 기술을 이용하여 야구와 관련된 정보를 추출합니다.
+CV-Val는 Computer Vision based Value detector의 약자로, 컴퓨터 비전 기술을 이용하여 야구와 관련된 정보를 추출합니다.
 
 일반적인 카메라에서 얻은 동영상에서,
 

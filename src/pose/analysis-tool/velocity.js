@@ -1,4 +1,4 @@
-import { magVec, dotVec, subVec } from "/src/math/vector.js"
+import { magVec, dotVec, subVec } from "../../math/vector.js"
 
 export class VelocityAnalysisTool {
     
