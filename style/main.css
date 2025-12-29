@@ -26,6 +26,7 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    word-break: keep-all;
 }
 
 :root {
@@ -34,7 +35,8 @@ body {
 }
 
 ul {
-    list-style-type: none;
+    list-style-type: circle;
+    list-style-position: inside;
     margin: 0;
     padding: 0;
 }
