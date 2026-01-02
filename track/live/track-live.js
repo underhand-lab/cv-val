@@ -1,6 +1,6 @@
-import * as webcam from "./web-cam.js";
-import * as BallDetector from '../src/track/ball-detector/index.js';
-import * as Calc from "../src/track/calc/velocity.js";
+import * as webcam from "../../src/web-cam/web-cam.js";
+import * as BallDetector from '../../src/cv-val/track/ball-detector/index.js';
+import * as Calc from "../../src/cv-val/track/calc/velocity.js";
 
 const detectors = {
     "yolo11x": new BallDetector.YOLOLiveBallDetector("../external/models/yolo11/yolo11x_web_model/model.json"),

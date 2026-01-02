@@ -1,5 +1,6 @@
-import * as PoseDetector from '../src/pose/pose-detector/index.js';
-import { PoseProcessor } from '../src/pose/processor.js';
+import { PoseData } from '../src/cv-val/pose/pose-data.js';
+import { Processor } from '../src/cv-val/processor.js';
+import * as PoseDetector from '../src/cv-val/pose/pose-detector/index.js';
 import * as AnalysisBox from './analysis-box.js';
 
 const fileInput = document.getElementById('video-files');
@@ -31,7 +32,7 @@ processButton.addEventListener('click', async () => {
     progressBar.style.width = `0%`;
 
     // 프로세서 및 탐지기 초기화
-    const processor = new PoseProcessor();
+    const processor = new Processor();
     const detector = detectors[detectorSelect.value];
 
     // 프로세서 설정 및 비디오 처리
@@ -47,9 +48,9 @@ processButton.addEventListener('click', async () => {
                 progressBar.style.width = `${percentage}%`;
             }
         });
-
-        // data 변수에 모든 처리된 데이터를 저장
-        const ret = await processor.processVideo(fileInput.files);
+        
+        const ret = await processor.processVideo(
+            fileInput.files, new PoseData());
 
         statusMessage.setAttribute('key', `label-after-process`);
         progressText.textContent = "";

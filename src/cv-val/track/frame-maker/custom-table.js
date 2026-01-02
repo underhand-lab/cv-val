@@ -1,4 +1,4 @@
-import * as Table from "../../visualizer/lib/table.js"
+import * as Table from "../../../visualizer/lib/table.js"
 
 class CustomTableFrameMaker {
     

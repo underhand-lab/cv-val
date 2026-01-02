@@ -1,4 +1,4 @@
-import { YOLOBallDetector } from '../src/track/ball-detector/index.js';
+import { YOLOBallDetector } from '../../src/track/ball-detector/index.js';
 
 let detector = null;
 let isInitialized = false;

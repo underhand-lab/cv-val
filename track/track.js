@@ -1,5 +1,6 @@
-import { TrackProcessor } from '../src/track/processor.js';
-import * as BallDetector from '../src/track/ball-detector/index.js';
+import { Processor } from '../src/cv-val/processor.js';
+import { TrackData } from "../src/cv-val/track/track-data.js"
+import * as BallDetector from '../src/cv-val/track/ball-detector/index.js';
 import * as AnalysisBox from './analysis-box.js';
 
 const fileInput = document.getElementById('video-files');
@@ -37,7 +38,7 @@ processButton.addEventListener('click', async () => {
     progressBar.style.width = `0%`;
 
     // 프로세서 및 탐지기 초기화
-    const processor = new TrackProcessor();
+    const processor = new Processor();
     const detector = detectors[detectorSelect.value];
     
     // 프로세서 설정 및 비디오 처리
@@ -54,7 +55,7 @@ processButton.addEventListener('click', async () => {
         });
 
         // data 변수에 모든 처리된 데이터를 저장
-        const ret = await processor.processVideo(fileInput.files);
+        const ret = await processor.processVideo(fileInput.files, new TrackData());
 
         statusMessage.setAttribute('key', `label-after-process`);
         progressText.textContent = "";

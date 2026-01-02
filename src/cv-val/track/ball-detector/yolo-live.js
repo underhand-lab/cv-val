@@ -153,4 +153,3 @@ export class YOLOLiveBallDetector {
 
 await tf.setBackend('webgl'); // 또는 'webgpu' (최신 브라우저)
 await tf.ready();
-console.log(tf.getBackend());

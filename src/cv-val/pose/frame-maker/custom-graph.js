@@ -1,8 +1,8 @@
-import { TableVisualizer } from "../../visualizer/table.js"
+import { GraphVisualizer } from "../../../visualizer/graph.js"
 import { IPoseFrameMaker } from "./pose.interface.js"
 
 
-class CustomTableFrameMaker extends IPoseFrameMaker {
+export class CustomGraphFrameMaker extends IPoseFrameMaker {
     
     constructor() {
         super();
@@ -10,10 +10,9 @@ class CustomTableFrameMaker extends IPoseFrameMaker {
         this.analysisTool = null;
     }
 
-    setInstance(instance) {
-        this.tableVisualizer = new TableVisualizer(instance);
+    setInstance(canvas) {
+        this.tableVisualizer = new GraphVisualizer(canvas);
         this.tableVisualizer.setDefault();
-
     }
 
     changeAnalysisTool(analysisTool) {
@@ -26,19 +25,16 @@ class CustomTableFrameMaker extends IPoseFrameMaker {
         if (data == null) return;
         
         this.data = data;
-        let tableData = null;
+        let graphData = null;
 
-        if (this.analysisTool == null) tableData = data;
-        else tableData = this.analysisTool.calc(data);
+        if (this.analysisTool == null) graphData = data;
+        else graphData = this.analysisTool.calc(data);
 
-        this.tableVisualizer.setData(tableData);
+        this.tableVisualizer.setData(graphData);
 
     }
 
     drawImageAt(idx) {
         this.tableVisualizer.drawImageAt(idx);
     }
-
 }
-
-export { CustomTableFrameMaker }

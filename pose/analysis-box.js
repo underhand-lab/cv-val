@@ -1,5 +1,5 @@
-import * as PoseAnalysis from "../src/pose/analysis-tool/index.js";
-import * as PoseFrameMaker from '../src/pose/frame-maker/index.js';
+import * as PoseAnalysis from "../src/cv-val/pose/analysis-tool/index.js";
+import * as PoseFrameMaker from '../src/cv-val/pose/frame-maker/index.js';
 import { BoxList } from "../src/easy-h/ui/box-list.js"
 
 const currentFrameIdxSpan = document.getElementById('currentFrameIdx');

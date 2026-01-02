@@ -1,5 +1,5 @@
-import * as FrameMaker from '../src/track/frame-maker/index.js';
-import * as Analysis from "../src/track/calc/analysis.js";
+import * as FrameMaker from '../src/cv-val/track/frame-maker/index.js';
+import * as Analysis from "../src/cv-val/track/calc/analysis.js";
 import { BoxList } from "../src/easy-h/ui/box-list.js";
 
 let frameMakers = [];
@@ -37,14 +37,14 @@ function setData(data) {
 
     if (data == null) return;
 
-    const frameCount = data["rawImage"].length;
-    slider.max = frameCount > 0 ? frameCount - 1 : 0;
-
     processedData = data;
 
     for (let i = 0; i < frameMakers.length; i++) {
         frameMakers[i].setData(data);
     }
+
+    const frameCount = processedData.getFrameCnt();
+    slider.max = frameCount > 0 ? frameCount - 1 : 0;
 
     updateImage();
 
