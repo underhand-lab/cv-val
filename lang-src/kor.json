@@ -1,6 +1,6 @@
 {
     "nav-pose": "자세",
-    "nav-track": "추적",
+    "nav-track-ball": "공 추적",
 
     "btn-download-processed-data": "처리된 데이터 다운로드",
     "btn-open-process": "분석",
