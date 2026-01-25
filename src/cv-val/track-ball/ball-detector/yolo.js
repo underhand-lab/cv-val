@@ -1,21 +1,17 @@
 export class YOLOBallDetector {
     
-    constructor(weightURL) {
+    constructor(weightURL, classId) {
         this.weightURL = weightURL;
-        // 내부 캔버스는 패딩(레터박스) 처리가 필요할 때만 제한적으로 사용합니다.
         this.offscreenCanvas = document.createElement('canvas');
+        this.classId = classId;
     }
 
     async initialize() {
-        console.log("모델 로딩:", this.weightURL);
-        await tf.setBackend('webgl'); // 또는 'webgpu' (최신 브라우저)
+        await tf.setBackend('webgl');
         await tf.ready();
         this.detector = await tf.loadGraphModel(this.weightURL);
     }
 
-    /**
-     * @param {HTMLCanvasElement | HTMLImageElement | HTMLVideoElement} imageSource 
-     */
     async process(imageSource) {
         // 1. 전처리: 소스(캔버스 등)로부터 텐서 생성
         const inputTensor = await this.preProcess(imageSource);
@@ -80,7 +76,7 @@ export class YOLOBallDetector {
 
         let bestBallInfo = null;
         let highestConf = -1;
-        const classIdToFilter = 32; // 야구공 클래스 ID
+        const classIdToFilter = this.classId;
 
         const [allDetections] = detections;
 
@@ -111,6 +107,3 @@ export class YOLOBallDetector {
         return bestBallInfo;
     }
 }
-
-await tf.setBackend('webgl'); // 또는 'webgpu' (최신 브라우저)
-await tf.ready();

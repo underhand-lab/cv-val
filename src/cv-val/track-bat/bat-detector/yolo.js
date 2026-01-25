@@ -1,10 +1,10 @@
 export class YOLOBatDetector {
 
-    constructor(weightURL) {
+    constructor(weightURL, classId) {
         this.weightURL = weightURL;
         this.offscreenCanvas = document.createElement('canvas');
         this.inputSize = 640;
-        this.batClassId = 34; // COCO 데이터셋 기준 야구 배트 ID
+        this.batClassId = classId; // COCO 데이터셋 기준 야구 배트 ID (예: 34)
     }
 
     async initialize() {
@@ -16,6 +16,8 @@ export class YOLOBatDetector {
     async process(imageSource) {
         const width = imageSource.width || imageSource.videoWidth;
         const height = imageSource.height || imageSource.videoHeight;
+
+        // 1. 전처리: 이미지를 정사각형 중앙에 배치 (Letterboxing)
         const inputTensor = await this.preProcess(imageSource);
 
         const resizedTensor = tf.tidy(() => {
@@ -24,12 +26,13 @@ export class YOLOBatDetector {
                 .expandDims(0);
         });
 
-        // executeAsync를 사용하여 다중 출력 수신
+        // 2. 모델 추론: executeAsync를 사용하여 다중 출력 수신
         const predictions = await this.detector.executeAsync(resizedTensor);
 
-        // 후처리: 가장 신뢰도가 높은 배트 하나만 반환 (확률 배열 포함)
+        // 3. 후처리: 오프셋 보정 및 마스크 필터링
         const bestBat = await this.postProcess(predictions, width, height);
 
+        // 메모리 정리
         inputTensor.dispose();
         resizedTensor.dispose();
         predictions.forEach(p => p.dispose());
@@ -39,14 +42,24 @@ export class YOLOBatDetector {
 
     async preProcess(imageSource) {
         const width = imageSource.width || imageSource.videoWidth;
-        const height = imageSource.height || imageSource.videoHeight;
+        const height = imageSource.height || height;
+
+        // 원본 이미지의 긴 쪽을 기준으로 정사각형 캔버스 생성
         const size = Math.max(width, height);
         const ctx = this.offscreenCanvas.getContext('2d');
+
         this.offscreenCanvas.width = size;
         this.offscreenCanvas.height = size;
+
+        // 배경 검은색 채우기
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, size, size);
-        ctx.drawImage(imageSource, 0, 0, width, height);
+
+        // 이미지를 중앙에 배치 (오프셋 계산)
+        const xOffset = (size - width) / 2;
+        const yOffset = (size - height) / 2;
+        ctx.drawImage(imageSource, xOffset, yOffset, width, height);
+
         return tf.browser.fromPixels(this.offscreenCanvas);
     }
 
@@ -61,45 +74,80 @@ export class YOLOBatDetector {
             const scores = transposed.slice([0, 4], [-1, 80]);
             const maskCoeffs = transposed.slice([0, 84], [-1, 32]);
 
-            // 배트 클래스(34)에 해당하는 스코어만 추출
             const batScores = scores.slice([0, this.batClassId], [-1, 1]).squeeze();
-
-            // 신뢰도가 가장 높은 인덱스 찾기 (임계값 0 적용)
             const bestIdx = batScores.argMax().dataSync()[0];
             const highestConf = batScores.gather(bestIdx).dataSync()[0];
 
-            if (highestConf <= 0) return null; // 감지된 배트 없음
+            if (highestConf < 0.25) return null;
 
             const box = boxes.gather(bestIdx).dataSync();
             const coeffs = maskCoeffs.gather(bestIdx).expandDims(0);
 
-            // 마스크 생성 (0.5 임계값 적용 전의 Raw 확률값 배열)
-            const confidenceMap = this.generateConfidenceMap(proto, coeffs);
+            // 1. 전체 마스크 생성 (160x160)
+            const rawMask = this.generateConfidenceMap(proto, coeffs);
+
+            // 2. 마스크 좌표계(160) 기준 박스 좌표 계산
+            // box[0,1,2,3]은 640px 기준이므로 4로 나누어 160px 기준으로 맞춤
+            const mScale = 160 / 640;
+            const mx1 = (box[0] - box[2] / 2) * mScale;
+            const my1 = (box[1] - box[3] / 2) * mScale;
+            const mx2 = (box[0] + box[2] / 2) * mScale;
+            const my2 = (box[1] + box[3] / 2) * mScale;
+
+            // 3. 레터박스(검은 여백) 제거 범위 계산
+            const xStart = Math.round(((originalSize - originalWidth) / 2) * (160 / originalSize));
+            const yStart = Math.round(((originalSize - originalHeight) / 2) * (160 / originalSize));
+            const mWidth = Math.round(originalWidth * (160 / originalSize));
+            const mHeight = Math.round(originalHeight * (160 / originalSize));
+
+            // 4. 마스크 추출 및 박스 외부 제로화 (Zero-out)
+            const croppedMask = [];
+            for (let j = 0; j < mHeight; j++) {
+                const y = yStart + j;
+                const row = [];
+                for (let i = 0; i < mWidth; i++) {
+                    const x = xStart + i;
+
+                    let val = 0;
+                    // rawMask가 존재하고, 현재 좌표(x, y)가 박스 영역(mx, my) 안에 있을 때만 값 할당
+                    if (rawMask[y] && x >= mx1 && x <= mx2 && y >= my1 && y <= my2) {
+                        val = rawMask[y][x] * highestConf;
+                    }
+                    row.push(val);
+                }
+                croppedMask.push(row);
+            }
+
+            // 5. 최종 결과 반환 (여백 보정된 BBox 포함)
+            const xOffset640 = ((originalSize - originalWidth) / 2) / originalSize * 640;
+            const yOffset640 = ((originalSize - originalHeight) / 2) / originalSize * 640;
 
             return {
                 bbox: [
-                    (box[0] - box[2] / 2) * scale,
-                    (box[1] - box[3] / 2) * scale,
+                    (box[0] - box[2] / 2 - xOffset640) * scale,
+                    (box[1] - box[3] / 2 - yOffset640) * scale,
                     box[2] * scale,
                     box[3] * scale
                 ],
-                confidence: highestConf, // 객체 자체의 탐지 신뢰도
-                maskConfidenceMap: confidenceMap // 2차원 확률 배열 (0.0 ~ 1.0)
+                confidence: highestConf,
+                maskConfidenceMap: croppedMask
             };
         });
     }
+
     generateConfidenceMap(proto, coeffs) {
         return tf.tidy(() => {
-            const [c, h, w] = [32, 160, 160];
-            const reshapedProto = proto.reshape([c, h * w]);
+            // proto: [1, 32, 160, 160]
+            let p = proto.squeeze();
 
-            // 1. 마스크 합성 (1x32 * 32x25600 = 1x25600)
-            let mask = tf.matMul(coeffs, reshapedProto);
+            const [h, w, c] = p.shape;
+            const proto2D = p.reshape([h * w, c]);
 
-            // 2. 160x160으로 변환 후 활성화 함수 적용
+            // 마스크 합성 연산
+            let mask = tf.matMul(coeffs, proto2D, false, true);
+
+            // 시그모이드 활성화 및 2D 배열 변환
             mask = mask.reshape([h, w]).sigmoid();
-
-            // 640으로 키우지 않고 160x160 배열 상태 그대로 CPU로 가져옵니다.
             return mask.arraySync();
         });
     }

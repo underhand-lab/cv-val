@@ -22,72 +22,90 @@ function nowIdx() {
 const maskOffscreen = document.createElement('canvas');
 const maskCtx = maskOffscreen.getContext('2d');
 
-function drawMask(currentMaskMap, threshold) {
+// 마스크를 누적할 버퍼 데이터를 처리하는 함수로 변경
+function applyMaskToBuffer(pixelData, currentMaskMap, threshold, color, canvasW, canvasH) {
     if (!currentMaskMap || currentMaskMap.length === 0) return;
 
-    const ctx = targetCanvas.getContext('2d');
-    const canvasW = targetCanvas.width;   // 640
-    const canvasH = targetCanvas.height;  // 640
-
-    // [중요] 마스크 데이터의 실제 크기를 여기서 측정합니다.
     const maskH = currentMaskMap.length;
     const maskW = currentMaskMap[0].length;
-
-    const imageData = ctx.createImageData(canvasW, canvasH);
-    const data = imageData.data;
-
-    // 숫자로 확실히 변환
     const thresh = parseFloat(threshold);
 
-    for (let y = 0; y < canvasH; y++) {
-        for (let x = 0; x < canvasW; x++) {
-            
-            // 640 좌표를 마스크의 좌표(160)로 스케일링
-            const my = Math.floor((y / canvasH) * maskH);
-            const mx = Math.floor((x / canvasW) * maskW);
+    // 가로/세로 스케일링 비율 미리 계산
+    const scaleY = maskH / canvasH;
+    const scaleX = maskW / canvasW;
 
-            // 데이터 접근
-            const prob = currentMaskMap[my][mx];
-            const pixelIdx = (y * canvasW + x) * 4;
+    for (let y = 0; y < canvasH; y++) {
+        const my = Math.floor(y * scaleY);
+        const row = currentMaskMap[my];
+        if (!row) continue;
+
+        for (let x = 0; x < canvasW; x++) {
+            const mx = Math.floor(x * scaleX);
+            const prob = row[mx];
 
             if (prob >= thresh) {
-                data[pixelIdx] = 0;     // R
-                data[pixelIdx + 1] = 255; // G (형광 초록)
-                data[pixelIdx + 2] = 0;   // B
-                data[pixelIdx + 3] = 180; // A (반투명)
-            } else {
-                data[pixelIdx + 3] = 0; // 배경 투명
+                const pixelIdx = (y * canvasW + x) * 4;
+                
+                // [데이터 변경 지점] 버퍼에 직접 색상 적용 (나중에 그릴 데이터)
+                // 여러 마스크가 겹칠 경우 마지막 마스크 색상이 우선됨
+                pixelData[pixelIdx] = color[0];     // R
+                pixelData[pixelIdx + 1] = color[1]; // G
+                pixelData[pixelIdx + 2] = color[2]; // B
+                pixelData[pixelIdx + 3] = color[3]; // A
             }
         }
     }
-
-    // 임시 캔버스에 그려서 원본 이미지 위에 합성 (이미지 덮어씌움 방지)
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvasW;
-    tempCanvas.height = canvasH;
-    tempCanvas.getContext('2d').putImageData(imageData, 0, 0);
-
-    ctx.drawImage(tempCanvas, 0, 0);
 }
 
 // 업데이트 함수
 function updateImage() {
-    if (!processedData) return;
+    if (!processedData || !targetCanvas) return;
     
     const img = processedData.getRawImgList(0)[nowIdx()];
     if (!img) return;
 
-    // 화면 캔버스 설정
-    targetCanvas.width = 640;
-    targetCanvas.height = 640;
+    const canvasW = 640;
+    const canvasH = 640;
+    targetCanvas.width = canvasW;
+    targetCanvas.height = canvasH;
     const ctx = targetCanvas.getContext('2d');
 
-    // 1. 먼저 원본 이미지를 그린다.
-    ctx.drawImage(img, 0, 0, 640, 640);
-    
-    // 2. 그 위에 마스크를 투명하게 덮어씌운다.
-    const maskMap = processedData.getBatList()[nowIdx()].maskConfidenceMap;
-    drawMask(maskMap, parseFloat(confInput.value));
+    // 1. 원본 이미지를 먼저 그립니다.
+    ctx.drawImage(img, 0, 0, canvasW, canvasH);
+
+    // 2. 캔버스 크기의 투명한 ImageData 객체(데이터 버퍼)를 생성합니다.
+    const maskImageData = ctx.createImageData(canvasW, canvasH);
+    const pixelBuffer = maskImageData.data; // Uint8ClampedArray (RGBA)
+
+    const trailLength = 15;
+    const threshold = parseFloat(confInput.value);
+
+    // 3. 이전 프레임들의 마스크 데이터를 버퍼에 누적 (데이터 조작)
+    const startIdx = Math.max(0, nowIdx() - trailLength);
+    for (let i = startIdx; i < nowIdx(); i++) {
+        const batData = processedData.getBatList()[i];
+        if (batData && batData.maskConfidenceMap) {
+            // 잔상은 초록색으로 데이터 기록
+            applyMaskToBuffer(pixelBuffer, batData.maskConfidenceMap, threshold, [0, 255, 0, 100], canvasW, canvasH);
+        }
+    }
+
+    // 4. 현재 프레임의 마스크 데이터를 버퍼에 기록
+    const nowBat = processedData.getBatList()[nowIdx()];
+    if (nowBat && nowBat.maskConfidenceMap) {
+        // 현재 위치는 주황색으로 데이터 기록
+        applyMaskToBuffer(pixelBuffer, nowBat.maskConfidenceMap, threshold, [255, 128, 0, 150], canvasW, canvasH);
+    }
+
+    // 5. [최종 단계] 가공된 데이터(버퍼)를 캔버스에 한 번에 적용합니다.
+    // 별도의 임시 캔버스 생성 없이 직접 그리되, 
+    // 투명도가 있는 ImageData이므로 putImageData 대신 임시 캔버스를 이용해 drawImage로 덮어씌웁니다.
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvasW;
+    tempCanvas.height = canvasH;
+    tempCanvas.getContext('2d').putImageData(maskImageData, 0, 0);
+
+    ctx.drawImage(tempCanvas, 0, 0);
 }
 
 slider.addEventListener('input', updateImage);

@@ -11,17 +11,17 @@ fileInput.addEventListener('change', () => {
 const detectorSelect = document.getElementById("model");
 const detectors = {
     "yolo11x": new BallDetector.YOLOBallDetector(
-        "../external/models/yolo11/yolo11x_web_model/model.json"),
+        "../external/models/yolo11/yolo11x_web_model/model.json", 32),
     "yolo11l": new BallDetector.YOLOBallDetector(
-        "../external/models/yolo11/yolo11l_web_model/model.json"),
+        "../external/models/yolo11/yolo11l_web_model/model.json", 32),
     "yolo11m": new BallDetector.YOLOBallDetector(
-        "../external/models/yolo11/yolo11m_web_model/model.json"),
+        "../external/models/yolo11/yolo11m_web_model/model.json", 32),
     "yolo11s": new BallDetector.YOLOBallDetector(
-        "../external/models/yolo11/yolo11s_web_model/model.json"),
+        "../external/models/yolo11/yolo11s_web_model/model.json", 32),
     "yolo11n": new BallDetector.YOLOBallDetector(
-        "../external/models/yolo11/yolo11n_web_model/model.json"),
+        "../external/models/yolo11/yolo11n_web_model/model.json", 32),
     "yolo26n": new BallDetector.YOLOBallDetector(
-        "../external/models/yolo26/yolo26n_web_model/model.json")
+        "../external/models/yolo26/yolo26n_web_model/model.json", 32)
 }
 
 const processButton = document.getElementById('process-button');
