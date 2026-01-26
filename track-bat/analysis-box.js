@@ -42,7 +42,10 @@ function setData(data) {
     
     frameMaker.setData(data);
     const frameCount = processedData.getFrameCnt();
-    slider.max = frameCount > 0 ? frameCount - 1 : 0;
+    const maxValue = frameCount > 0 ? frameCount - 1 : 0;
+
+    slider.max = maxValue;
+    trailInput.max = maxValue;
     updateImage();
 }
 
