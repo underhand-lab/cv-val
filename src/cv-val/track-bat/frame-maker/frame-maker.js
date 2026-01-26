@@ -87,22 +87,32 @@ export class TrackFrameMaker {
         const ptsB = this.getMaskMinMaxY(currMask, threshold);
 
         if (ptsA && ptsB) {
-            // 1. 네 개의 점을 하나의 배열로 모읍니다.
             const points = [ptsA.top, ptsA.bottom, ptsB.top, ptsB.bottom];
 
-            // 2. 무게 중심(Centroid) 계산
-            const center = {
-                x: points.reduce((p, c) => p + c.x, 0) / 4,
-                y: points.reduce((p, c) => p + c.y, 0) / 4
-            };
+            // 1. 기준점(가장 아래에 있고, 같다면 가장 왼쪽에 있는 점) 찾기
+            // 정렬의 기준이 되는 점을 하나 고정합니다.
+            points.sort((a, b) => a.y - b.y || a.x - b.x);
+            const base = points[0];
 
-            // 3. 무게 중심 기준 각도(Math.atan2)로 정렬하여 꼬임 방지
+            // 2. 나머지 점들을 기준점과의 '기울기(삼각비)' 순으로 정렬
+            // 외적(Cross Product)을 이용하여 atan2 없이 두 점의 상대적 위치 비교
             const sortedPoints = points.sort((a, b) => {
-                return Math.atan2(a.y - center.y, a.x - center.x) -
-                    Math.atan2(b.y - center.y, b.x - center.x);
+                if (a === base) return -1;
+                if (b === base) return 1;
+
+                // 벡터 (base -> a)와 (base -> b)의 외적 계산
+                // (x1*y2 - x2*y1)
+                const crossProduct = (a.x - base.x) * (b.y - base.y) - (a.y - base.y) * (b.x - base.x);
+
+                if (crossProduct > 0) return -1; // a가 b보다 반시계 방향에 있음
+                if (crossProduct < 0) return 1;  // a가 b보다 시계 방향에 있음
+
+                // 거리가 가까운 순서로 정렬 (일직선상에 있을 경우 대비)
+                const distA = Math.pow(a.x - base.x, 2) + Math.pow(a.y - base.y, 2);
+                const distB = Math.pow(b.x - base.x, 2) + Math.pow(b.y - base.y, 2);
+                return distA - distB;
             });
 
-            // 4. 정렬된 순서로 다각형 그리기
             this.fillQuadrilateral(pixelData, sortedPoints, color, maskW, maskH);
         }
     }
